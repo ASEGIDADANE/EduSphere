@@ -9,8 +9,10 @@ import session from 'express-session';
 import passport from 'passport';
 import './Config/passport';
 import { authConfig } from './Config/authConfig';
+import cookieparser from 'cookie-parser';
 
 const app = express();
+app.use(cookieparser());
 
 // connect to database
 connectDB();

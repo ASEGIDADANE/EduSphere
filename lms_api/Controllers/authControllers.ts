@@ -3,6 +3,9 @@ import { userValidationSchema, userLoginSchemaZod } from "../Models/userModel";
 import User from "../Models/userModel";
 import bcrypt from "bcrypt";
 import { generateToken } from "../Services/jwt_services";
+import jwt from "jsonwebtoken";
+import Blacklist from "../Models/blacklistModel";
+
 
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -87,3 +90,30 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         res.status(500).json({ message: errorMessage });
     }
 };
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+        const decoded:any = jwt.decode(token);
+        const expire = new Date(decoded.exp * 1000);
+
+        await Blacklist.create({ token, expiresAt:expire });
+        res.status(200).json({ message: "Logout successful" });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -10,6 +10,7 @@ import passport from 'passport';
 import './Config/passport';
 import { authConfig } from './Config/authConfig';
 import cookieparser from 'cookie-parser';
+import courseRoutes from './Routes/courseRouter';
 
 const app = express();
 app.use(cookieparser());
@@ -37,6 +38,7 @@ app.use(passport.session());
 
 // routes
 app.use('/api/auth', authRoutes);
+app.use('/api/course', courseRoutes);
 
 app.listen(config.PORT, () => { 
     console.log(`Server is running on port ${config.PORT}`);

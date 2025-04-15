@@ -10,4 +10,3 @@ const blacklistSchema = new mongoose.Schema({
 blacklistSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const Blacklist = mongoose.model("Blacklist", blacklistSchema);
 export default Blacklist;
-    

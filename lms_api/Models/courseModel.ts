@@ -10,6 +10,7 @@ interface ICourse extends Document {
     price: number;
     studentEnrolled: Schema.Types.ObjectId[];
     rate: number;
+    deleted?: boolean;
 }
 
 
@@ -53,6 +54,10 @@ const courseSchema: Schema = new mongoose.Schema(
         max:[5,"Rate must be less than or equal to 5"],
         default:0
     },
+    deleted: {
+        type: Boolean,
+        default: false
+      },
 }
 ,{timestamps:true}
 );

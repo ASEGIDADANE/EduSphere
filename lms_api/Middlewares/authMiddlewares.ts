@@ -1,39 +1,9 @@
-// import { Request,Response,NextFunction } from "express";
-// import jwt from "jsonwebtoken";
-// import { config } from "../Config/config";
-// import Blacklist from "../Models/blacklistModel";
-
-// interface AuthenticateUser extends Request {
-//     user?: {
-//     id: string;
-//     role: string}
-// }
-// export const authenticateUser = (req:AuthenticateUser, res: Response, next: NextFunction) => {
-//     const token = req.headers.authorization?.split(" ")[1];
-//     if (!token) {
-//         return res.status(401).json({ message: "Unauthorized" });
-//     }
-
-//     if(Blacklist){
-//         return res.status(403).json({ message: "Token Blacklisted" });
-//     }
-//     try {
-//         const decoded = jwt.verify(token, config.jwtSecret) as { id: string; role: string };
-//         req.user = { id: decoded.id, role: decoded.role };
-//         next();
-//     } catch (error) {
-//         return res.status(401).json({ message: "Invalid token" });
-//     }
-// }
-
-
-
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import Blacklist from '../Models/blacklistModel';
 
 interface DecodedToken {
-  id: string;
+  _id: string; // ✅ This is what we’ll use internally
   role: string;
   iat: number;
   exp: number;
@@ -52,7 +22,6 @@ const authenticateUser = async (req: Request, res: Response, next: NextFunction)
     const token = authHeader.split(' ')[1];
 
     try {
-      // ❗️ Check if token is blacklisted
       const isBlacklisted = await Blacklist.findOne({ token });
 
       if (isBlacklisted) {
@@ -60,13 +29,21 @@ const authenticateUser = async (req: Request, res: Response, next: NextFunction)
         return;
       }
 
-      // ✅ Verify token
       jwt.verify(token, process.env.jwtSecret as string, (err, decoded) => {
-        if (err) {
+        if (err || !decoded) {
           return res.status(401).json({ message: 'Invalid token' });
         }
 
-        req.user = decoded as DecodedToken;
+        // Normalize to have _id
+        const userData = decoded as { id: string; role: string } & DecodedToken;
+
+        req.user = {
+          _id: userData.id || userData._id, // ✅ Use _id internally
+          role: userData.role,
+          iat: userData.iat,
+          exp: userData.exp,
+        };
+
         next();
       });
 

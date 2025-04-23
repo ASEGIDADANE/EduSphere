@@ -11,6 +11,8 @@ interface ICourse extends Document {
     studentEnrolled: Schema.Types.ObjectId[];
     rate: number;
     deleted?: boolean;
+    review:Schema.Types.ObjectId[];
+
 }
 
 
@@ -58,6 +60,13 @@ const courseSchema: Schema = new mongoose.Schema(
         type: Boolean,
         default: false
       },
+   review:{
+        type:Schema.Types.ObjectId,
+        ref:"Review",
+        
+    },
+   
+    
 }
 ,{timestamps:true}
 );

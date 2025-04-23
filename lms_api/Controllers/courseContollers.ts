@@ -1,5 +1,6 @@
 import { Request,Response } from "express";
 import courseModel from "../Models/courseModel";
+import reviewModel from "../Models/reviewModel";
 import { courseValidationSchema } from "../Models/courseModel";
 import { z } from "zod";
 
@@ -9,7 +10,7 @@ import mongoose from "mongoose";
 export const cerateCourse = async (req:Request,res:Response):Promise<void>=>{
     try {
         const {title,description,category,instructor,price} = req.body;
-        const userId = req.user?.id; // Assuming auth middleware adds this
+        const userId = req.user?._id; // Assuming auth middleware adds this
         // Validate user input
         const parsedData = courseValidationSchema.parse({
             title,
@@ -76,6 +77,7 @@ export const getAllCourses = async (req: Request, res: Response): Promise<void> 
 
     // 5️⃣ Get total count for pagination metadata
     const totalCourses = await courseModel.countDocuments(filter);
+    
     const totalPages = Math.ceil(totalCourses / limit);
 
     // 6️⃣ Respond with data
@@ -96,28 +98,63 @@ export const getAllCourses = async (req: Request, res: Response): Promise<void> 
 
 
 
-export const getCourseById = async (req:Request,res:Response):Promise<void>=>{
-    try {
-        const {id} = req.params;
-        const course = await courseModel.findById({_id:id,deleted:false}).populate("instructor","name email").populate("studentEnrolled","name email");
-        if (!course) {
-            res.status(404).json({message:"Course not found"});
-            return;
-        }
-        res.status(200).json({message:"Course found",course});
-    } catch (error) {
-        console.log('this error is from get course by id', error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-        res.status(500).json({ message: errorMessage });
+// export const getCourseById = async (req:Request,res:Response):Promise<void>=>{
+//     try {
+//         const {id} = req.params;
+//         const course = await courseModel.findById({_id:id,deleted:false}).populate("instructor","name email").populate("studentEnrolled","name email");
+//         if (!course) {
+//             res.status(404).json({message:"Course not found"});
+//             return;
+//         }
+//         res.status(200).json({message:"Course found",course});
+//     } catch (error) {
+//         console.log('this error is from get course by id', error);
+//         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+//         res.status(500).json({ message: errorMessage });
+//     }
+// }
+export const getCourseById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const course = await courseModel
+      .findOne({ _id: id, deleted: false }) // optionally add visibility: true
+      .populate("instructor", "name email")
+      .populate("studentEnrolled", "name email")
+      .populate({
+        path: "review",
+        match: { status: "approved" },
+        populate: { path: "student", select: "name" }
+      })
+      .lean();
+
+    if (!course) {
+      res.status(404).json({ message: "Course not found" });
+      return;
     }
-}
+
+    res.status(200).json({
+      message: "Course retrieved successfully",
+      course: {
+        ...course,
+        rate: course.rate || 0 // or compute average from reviews
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    res.status(500).json({ message: errorMessage });
+  }
+};
+
 
 
 
 export const updateCourse = async (req: Request, res: Response): Promise<void> => {
   try {
     const courseId = req.params.id;
-    const userId = req.user?.id;
+    const userId = req.user?._id;
      // Assuming auth middleware adds this
 
     // Find the course by ID
@@ -153,7 +190,7 @@ export const updateCourse = async (req: Request, res: Response): Promise<void> =
 export const deleteCourse = async (req: Request, res: Response): Promise<void> => {
   try {
     const courseId = req.params.id; 
-    const userId = req.user?.id; 
+    const userId = req.user?._id; 
 
     // Validate course existence
     const course = await courseModel.findById(courseId);
@@ -180,4 +217,11 @@ export const deleteCourse = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ message: errorMessage });
   }
 };
+
+
+
+
+
+
+
 

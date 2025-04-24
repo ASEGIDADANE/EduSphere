@@ -2,53 +2,74 @@ import { Request, Response } from 'express';
 import Enrollment from '../Models/enrollementModel';
 import Course from '../Models/courseModel';
 import UserModel from '../Models/userModel';
+import mongoose from 'mongoose';
 
 import { sendEnrollmentEmail } from '../utils/email';
 
 
 
 
-export const enrollInCourse = async (req: Request, res: Response) => {
+interface IUser {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+  email: string;
+  role: 'student' | 'instructor' | 'admin';
+}
+
+// Define the structure of `req.params`
+interface ICourseParams {
+  courseId: string;
+}
+
+export const enrollInCourse = async (
+  req: Request<ICourseParams, {}, {}, {}> & { user?: IUser }, // Extend Request with custom types
+  res: Response
+): Promise<void> => {
   const { courseId } = req.params;
+
+  // Check if user is authenticated
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized: User information is missing' });
+    res.status(401).json({ message: 'Unauthorized: User information is missing' });
+    return;
   }
+
   const user = req.user;
-  if (user.role != "student"){
-    return res.status(403).json({ message: 'Forbidden: Only students can enroll in courses' });
-  } // Assume you attach student info to req.user via middleware
+
+  // Check if user is a student
+  if (user.role !== 'student') {
+    res.status(403).json({ message: 'Forbidden: Only students can enroll in courses' });
+    return;
+  }
 
   try {
     // 1. Check if course exists
     const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ message: 'Course not found' });
+    if (!course) {
+      res.status(404).json({ message: 'Course not found' });
+      return;
+    }
 
     // 2. Check if already enrolled
     const alreadyEnrolled = await Enrollment.findOne({ course: courseId, student: user._id });
-    if (alreadyEnrolled)
-      return res.status(409).json({ message: 'Already enrolled in this course' });
+    if (alreadyEnrolled) {
+      res.status(409).json({ message: 'Already enrolled in this course' });
+      return;
+    }
 
-    // 3. Check seat availability if course has maxSeats
-    // if (course.maxSeats) {
-    //   const currentEnrollmentCount = await Enrollment.countDocuments({ course: courseId });
-    //   if (currentEnrollmentCount >= course.maxSeats) {
-    //     return res.status(400).json({ message: 'No seats available for this course' });
-    //   }
-    // }
-
-    // 4. Handle payment if paid course (mock payment here)
-    let paymentId = null;
+    // 3. Handle payment if the course is paid
+    let paymentId: string | null = null;
     if (course.price > 0) {
       // 🔒 Real-world: Integrate Stripe/PayPal
       // Mock payment
-      const paymentSuccessful = true;
+      const paymentSuccessful = true; // Replace with real payment logic
       if (!paymentSuccessful) {
-        return res.status(402).json({ message: 'Payment failed' });
+        res.status(402).json({ message: 'Payment failed' });
+        return;
       }
-      paymentId = 'mock-payment-id-123'; // save real paymentId if using real gateway
+      paymentId = 'mock-payment-id-123'; // Replace with real payment ID
     }
 
-    // 5. Enroll the student
+    // 4. Enroll the student
     const enrollment = await Enrollment.create({
       course: courseId,
       student: user._id,
@@ -56,22 +77,67 @@ export const enrollInCourse = async (req: Request, res: Response) => {
       status: 'active',
       paymentId,
     });
-    var studentId = user._id; // Assuming user._id is the student ID
-    // 6. Send confirmation email
-    const student = await UserModel.findById(studentId);
+
+    // 5. Send confirmation email
+    const student = await UserModel.findById(user._id);
     if (student) {
       await sendEnrollmentEmail(student.email, student.name, course.title);
     } else {
-      return res.status(404).json({ message: 'Student not found' });
+      res.status(404).json({ message: 'Student not found' });
+      return;
     }
 
-    // 7. Respond
-    return res.status(201).json({
+    // 6. Respond with success
+    res.status(201).json({
       message: 'Enrolled successfully',
       enrollment,
+
     });
+    return; // Explicitly return void
+    // Explicitly return void
   } catch (error) {
     console.error('Enrollment error:', error);
-    return res.status(500).json({ message: 'Failed to enroll in course' });
+    res.status(500).json({ message: 'Failed to enroll in course' });
+    return
+  }
+};
+
+interface ICourseParams {
+  courseId: string;
+}
+
+interface IEnrollmentResponse {
+  _id: string;
+  student: {
+    name: string;
+    email: string;
+  };
+  enrolledAt: Date;
+}
+
+export const getEnrolledStudents = async (
+  req: Request<ICourseParams>, // Extend Request with custom params type
+  res: Response
+): Promise<void> => {
+  const { courseId } = req.params;
+
+  try {
+    // Fetch enrollments and populate student details
+    const enrollments = await Enrollment.find({ course: courseId })
+      .populate('student', 'name email')
+      .sort({ enrolledAt: -1 })
+      .lean<IEnrollmentResponse[]>(); // Ensure the response is strongly typed
+
+    if (!enrollments.length) {
+      res.status(404).json({ message: 'No students enrolled' });
+      return; // Explicitly return void
+    }
+
+    res.status(200).json(enrollments);
+    return; // Explicitly return void
+  } catch (error) {
+    console.error('Error fetching enrolled students:', error);
+    res.status(500).json({ message: 'Failed to fetch enrolled students' });
+    return; // Explicitly return void
   }
 };

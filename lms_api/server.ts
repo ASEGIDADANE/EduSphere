@@ -12,6 +12,7 @@ import { authConfig } from './Config/authConfig';
 import cookieparser from 'cookie-parser';
 import courseRoutes from './Routes/courseRouter';
 import reviewRoutes from './Routes/reviewRoutes';
+import lessonRoutes from './Routes/lessonRoutes';
 
 import enrollRoutes from './Routes/enrollmentRoute';
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/course', courseRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/enroll',enrollRoutes); // Assuming you have a reviewRoutes file
+app.use('/api/lesson',lessonRoutes); // Assuming you have a lessonRoutes file
 
 app.listen(config.PORT, () => { 
     console.log(`Server is running on port ${config.PORT}`);

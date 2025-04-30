@@ -14,7 +14,7 @@ import courseRoutes from './Routes/courseRouter';
 import reviewRoutes from './Routes/reviewRoutes';
 import lessonRoutes from './Routes/lessonRoutes';
 import quizRoutes from './Routes/quizRoute';
-
+import adminRoutes from './Routes/adminRoutes';
 import enrollRoutes from './Routes/enrollmentRoute';
 const app = express();
 app.use(cookieparser());
@@ -44,9 +44,10 @@ app.use(passport.session());
 app.use('/api/auth', authRoutes);
 app.use('/api/course', courseRoutes);
 app.use('/api/review', reviewRoutes);
-app.use('/api/enroll',enrollRoutes); // Assuming you have a reviewRoutes file
+app.use('/api/enroll',enrollRoutes); 
 app.use('/api/lesson',lessonRoutes); 
-app.use('/api/quiz',quizRoutes);// Assuming you have a lessonRoutes file
+app.use('/api/quiz',quizRoutes);
+app.use('/api/admin',adminRoutes); 
 
 app.listen(config.PORT, () => { 
     console.log(`Server is running on port ${config.PORT}`);

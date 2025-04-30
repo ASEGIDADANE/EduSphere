@@ -1,6 +1,7 @@
 import { Request,Response } from "express";
 import courseModel from "../Models/courseModel";
 import reviewModel from "../Models/reviewModel";
+import user from "../Models/userModel";
 import { courseValidationSchema } from "../Models/courseModel";
 import { z } from "zod";
 
@@ -10,7 +11,22 @@ import mongoose from "mongoose";
 export const cerateCourse = async (req:Request,res:Response):Promise<void>=>{
     try {
         const {title,description,category,instructor,price} = req.body;
-        const userId = req.user?._id; // Assuming auth middleware adds this
+        const userId = req.user?._id; 
+        if(!userId) {
+          res.status(401).json({message:"Authentication required"});
+          return;
+        }
+        const instructorUser = await user.findById(userId);
+
+        if (!instructorUser) {
+          res.status(404).json({message:"Instructor not found"});
+          return;
+        }
+        if(instructorUser.role !== "instructor" || instructorUser.instructorStatus !== "approved") {
+          res.status(403).json({message:"Only approved instructors can create courses"});
+          return;
+        }
+
         // Validate user input
         const parsedData = courseValidationSchema.parse({
             title,
@@ -19,6 +35,7 @@ export const cerateCourse = async (req:Request,res:Response):Promise<void>=>{
             instructor:userId,
             price,
         });
+   
         const newCourse = new courseModel({
             title:parsedData.title,
             description:parsedData.description,

@@ -16,6 +16,7 @@ import lessonRoutes from './Routes/lessonRoutes';
 import quizRoutes from './Routes/quizRoute';
 import adminRoutes from './Routes/adminRoutes';
 import enrollRoutes from './Routes/enrollmentRoute';
+import studentAccessReqRoutes from './Routes/studentAccessReqRoutes';
 const app = express();
 app.use(cookieparser());
 
@@ -48,6 +49,7 @@ app.use('/api/enroll',enrollRoutes);
 app.use('/api/lesson',lessonRoutes); 
 app.use('/api/quiz',quizRoutes);
 app.use('/api/admin',adminRoutes); 
+app.use('/api/instructor',studentAccessReqRoutes);
 
 app.listen(config.PORT, () => { 
     console.log(`Server is running on port ${config.PORT}`);

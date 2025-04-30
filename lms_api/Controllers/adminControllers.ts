@@ -3,7 +3,8 @@ import { Request, Response } from "express";
 import { userValidationSchema, userLoginSchemaZod } from "../Models/userModel";
 import mongoose from "mongoose";
 import { IUser } from "../Models/userModel";
-import AdminLog from "../Models/adminlogModel"; // Assuming you have an AdminLog model for logging admin actions
+import AdminLog from "../Models/adminlogModel"; 
+import { sendInstructorApprovalEmail } from "../utils/email";// Assuming you have an AdminLog model for logging admin actions
 
 
 
@@ -154,3 +155,127 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+
+
+export const getPendingInstructorRequests = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // Find users who have requested instructor access and are pending
+        const pendingRequests = await User.find({
+            isInstructorRequest: true,
+            instructorStatus: "pending",
+        }).select("name email createdAt isInstructorRequest instructorStatus"); // Select relevant fields
+
+        res.status(200).json({ requests: pendingRequests });
+
+    } catch (error) {
+        console.error("Error fetching pending instructor requests:", error);
+        res.status(500).json({ message: "Server error" }); // Avoid sending raw error object
+    }
+};
+
+
+export const approveInstructorRequest = async (req:Request, res: Response): Promise<void> => {
+    const { id } = req.params; 
+
+    try {
+        // 1. Validate ID
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Valid User ID parameter is required.' });
+            return;
+        }
+
+        // 2. Find the user with the pending request
+        const user = await User.findById(id);
+
+        // 3. Check if a valid pending request exists
+        if (!user || user.role !== "student" || user.instructorStatus !== "pending" || !user.isInstructorRequest) {
+            res.status(404).json({ message: "Valid pending instructor request not found for this user." });
+            return;
+        }
+
+        // 4. Update user's role and status
+        user.role = "instructor";
+        user.instructorStatus = "approved";
+        user.isInstructorRequest = false; // Reset the request flag
+
+        // 5. Save the changes
+        await user.save();
+
+        // 6. Log the admin action
+        if (req.user?._id) {
+            await AdminLog.create({
+                adminId: req.user._id,
+                action: `Approved instructor request for user ${user.email || id}`,
+                targetUserId: user._id,
+            });
+        } else {
+            console.warn('Admin user ID not found in request for logging approval.');
+        }
+
+        // 7. Send success response
+        res.status(200).json({ message: "Instructor request approved successfully.", user: { _id: user._id, name: user.name, email: user.email, role: user.role } });
+         sendInstructorApprovalEmail(user.email, user.name, user.instructorStatus); // Send email notification
+        return; // Explicitly return void
+
+    } catch (error) {
+        console.error("Error approving instructor request:", error);
+        if (error instanceof mongoose.Error.ValidationError) {
+            res.status(400).json({ message: 'Validation failed during update.', errors: error.errors });
+            return;
+        }
+        res.status(500).json({ message: "Internal server error" }); // Avoid sending raw error
+    }
+};
+
+export const rejectInstructorRequest = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params; 
+
+    try {
+        // 1. Validate ID
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            res.status(400).json({ message: 'Valid User ID parameter is required.' });
+            return;
+        }
+
+        // 2. Find the user with the pending request
+        const user = await User.findById(id);
+
+        // 3. Check if a valid pending request exists
+
+        if (!user || user.role !== "student" || user.instructorStatus !== "pending" || !user.isInstructorRequest) {
+            res.status(404).json({ message: "Valid pending instructor request not found for this user." });
+            return;
+        }
+
+        // 4. Update user's status to rejected
+        user.instructorStatus = "rejected";
+        user.isInstructorRequest = false; // Reset the request flag
+
+        // 5. Save the changes
+        await user.save();
+
+        // 6. Log the admin action
+        if (req.user?._id) {
+            await AdminLog.create({
+                adminId: req.user._id,
+                action: `Rejected instructor request for user ${user.email || id}`,
+                targetUserId: user._id,
+            });
+        } else {
+            console.warn('Admin user ID not found in request for logging rejection.');
+        }
+
+        // 7. Send success response
+        res.status(200).json({ message: "Instructor request rejected successfully.", user: { _id: user._id, name: user.name, email: user.email, instructorStatus: user.instructorStatus } }); 
+        sendInstructorApprovalEmail(user.email, user.name, user.instructorStatus);
+        return; // Send email notification
+
+    } catch (error) {
+        console.error("Error rejecting instructor request:", error);
+        if (error instanceof mongoose.Error.ValidationError) {
+            res.status(400).json({ message: 'Validation failed during update.', errors: error.errors });
+            return;
+        }
+        res.status(500).json({ message: "Internal server error" }); // Avoid sending raw error
+    }
+};

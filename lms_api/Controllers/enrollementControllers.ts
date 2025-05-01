@@ -122,18 +122,20 @@ export const createEnrollmentOrder = async (
       });
 
       // Send confirmation email for free course
-      const student = await UserModel.findById(user._id).select('name email'); 
-      if (student) {
-        await sendEnrollmentEmail(student.email, student.name, course.title);
-      } else {
-        console.warn(`Student data not found for ID: ${user._id} after free enrollment.`);
-        // Don't fail the request, enrollment succeeded, but log the issue
-      }
+      try {
+        const student = await UserModel.findById(user._id).select('name email');
+        if (student) {
+          console.log(`Attempting to send enrollment email to ${student.email} for course ${course.title}`);
+          await sendEnrollmentEmail(student.email, student.name, course.title);
+          console.log(`Enrollment email sent successfully to ${student.email}`);
+        } else {
+          console.warn(`Student data not found for ID: ${user._id} when trying to send free enrollment email.`);
+        }
+    } catch (emailError) {
+        
+        console.error(`Failed to send enrollment email for user ${user._id} / course ${courseId}:`, emailError);
+    }
 
-      res.status(201).json({
-        message: 'Enrolled successfully (Free Course)',
-        enrollment,
-      });
       return;
     }
 

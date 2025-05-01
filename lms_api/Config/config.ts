@@ -6,8 +6,8 @@ export const config = {
   jwtSecret:process.env.JWTSECRET||'secret' ,
   jwtExpiration:'7d',
   secret: process.env.SESSION_SECRET || 'secret',
-  paypal_secrete: process.env.PAYPAL_SECRET, 
-  paypal_client_id: process.env.PAYPAL_CLIENT_ID,
+  PAYPAL_SECRET: process.env.PAYPAL_SECRET, 
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
 
 };
 

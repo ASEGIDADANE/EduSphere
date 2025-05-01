@@ -22,7 +22,7 @@ export const cerateCourse = async (req:Request,res:Response):Promise<void>=>{
           res.status(404).json({message:"Instructor not found"});
           return;
         }
-        if(instructorUser.role !== "instructor" || instructorUser.instructorStatus !== "approved") {
+        if(instructorUser.role !== "instructor" ) {
           res.status(403).json({message:"Only approved instructors can create courses"});
           return;
         }

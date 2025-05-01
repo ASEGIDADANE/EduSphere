@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "bcrypt": "^5.1.1",
     "body-parser": "^2.2.0",
     "cookie-parser": "^1.4.7",
@@ -36,6 +37,7 @@
     "@types/node": "^22.13.17",
     "@types/nodemailer": "^6.4.17",
     "@types/passport-google-oauth20": "^2.0.16",
+    "@types/paypal__checkout-server-sdk": "^1.0.8",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"

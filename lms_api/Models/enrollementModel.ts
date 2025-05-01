@@ -31,7 +31,7 @@ const enrollmentSchema = new Schema<IEnrollment>(
     },
     paymentId: {
       type: String,
-      required: true,
+      required: false,
     },
   },
   {
